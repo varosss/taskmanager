@@ -5,12 +5,14 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"taskmanager/item"
 	"taskmanager/store"
 )
 
 type Task = item.Task
+type Status = item.Status
 
 var taskByIdRoute = regexp.MustCompile(`^/task/(\d+)$`)
 
@@ -71,7 +73,8 @@ func TaskByIdHandler(w http.ResponseWriter, r *http.Request) {
 func ListTasksHandler(w http.ResponseWriter, r *http.Request) {
 	user := r.URL.Query().Get("user")
 	if user == "" {
-		http.Error(w, "User is invalid", http.StatusBadRequest)
+		http.Error(w, "User is required", http.StatusBadRequest)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -79,19 +82,36 @@ func ListTasksHandler(w http.ResponseWriter, r *http.Request) {
 	taskStore := store.NewTaskStore(user)
 	taskStore.LoadFromFile()
 
-	statusStr := r.URL.Query().Get("status")
-
-	if statusStr == "" {
-		json.NewEncoder(w).Encode(taskStore.List())
-		return
+	statusQueries := r.URL.Query()["status"]
+	statuses := make(map[Status]bool, len(statusQueries))
+	for _, s := range statusQueries {
+		if s == "" {
+			continue
+		}
+		sInt, err := strconv.Atoi(s)
+		if err != nil {
+			http.Error(w, "Invalid status value", http.StatusBadRequest)
+			return
+		}
+		statuses[item.StatusFromInt(sInt)] = true
 	}
 
-	status, err := strconv.Atoi(statusStr)
-	if err != nil || status == int(item.StatusUnkown) {
-		http.Error(w, "Unknown status", http.StatusBadRequest)
+	title := r.URL.Query().Get("title")
+
+	var filtered []item.Task
+	allTasks := taskStore.List()
+
+	for _, task := range allTasks {
+		if len(statuses) > 0 && !statuses[task.Status] {
+			continue
+		}
+		if title != "" && !strings.Contains(task.Title, title) {
+			continue
+		}
+		filtered = append(filtered, task)
 	}
 
-	json.NewEncoder(w).Encode(taskStore.ListByStatus(item.StatusFromInt(status)))
+	json.NewEncoder(w).Encode(filtered)
 }
 
 func CreateTasksHandler(w http.ResponseWriter, r *http.Request) {
