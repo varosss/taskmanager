@@ -5,4 +5,5 @@ type Task struct {
 	Title    string `json:"title"`
 	Status   Status `json:"status"`
 	Category string `json:"category"`
+	UserId   int    `json:"user_id"`
 }

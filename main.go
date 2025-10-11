@@ -1,29 +1,58 @@
 package main
 
 import (
-	"fmt"
+	"context"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"taskmanager/handlers"
+	"taskmanager/internal/handlers"
+	"taskmanager/internal/service"
 )
 
 func main() {
-	port := ":8080"
+	taskService := service.NewTaskService()
+	taskHandler := handlers.NewTaskHandler(taskService)
 
-	fmt.Printf("Hello! Serving task manager at http://localhost%s !\n", port)
-
-	http.HandleFunc("/", handlers.HealthHandler)
-	http.HandleFunc("/tasks", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/tasks", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			handlers.ListTasksHandler(w, r)
+			taskHandler.ListTasks(w, r)
 		case http.MethodPost:
-			handlers.CreateTasksHandler(w, r)
+			taskHandler.AddTasks(w, r)
+		case http.MethodPatch:
+			taskHandler.UpdateTasks(w, r)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
 	})
-	http.HandleFunc("/task/", handlers.TaskByIdHandler)
+	mux.HandleFunc("/task", taskHandler.DeleteTask)
 
-	http.ListenAndServe(port, nil)
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: mux,
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		log.Println("Server started at :8080")
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	log.Println("shutting down...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	srv.Shutdown(shutdownCtx)
+	log.Println("graceful shutdown complete")
 }

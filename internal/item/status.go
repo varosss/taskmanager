@@ -10,7 +10,7 @@ const (
 	StatusUnkown     Status = -2
 )
 
-func (s Status) toString() string {
+func (s Status) String() string {
 	switch s {
 	case StatusInQueue:
 		return "В очереди"
