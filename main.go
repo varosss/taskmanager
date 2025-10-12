@@ -10,14 +10,23 @@ import (
 	"time"
 
 	"taskmanager/internal/handlers"
-	"taskmanager/internal/service"
 )
 
 func main() {
-	taskService := service.NewTaskService()
-	taskHandler := handlers.NewTaskHandler(taskService)
+	userHandler := handlers.NewUserHandler()
+	taskHandler := handlers.NewTaskHandler()
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			userHandler.ListUsers(w, r)
+		case http.MethodPost:
+			userHandler.AddUsers(w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	})
 	mux.HandleFunc("/tasks", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:

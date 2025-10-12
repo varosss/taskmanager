@@ -1,4 +1,4 @@
-package handlers
+package utils
 
 import (
 	"encoding/json"
@@ -26,7 +26,11 @@ type DeleteTaskRequest struct {
 	TaskId int
 }
 
-func validateListTasksRequest(r *http.Request) (*ListTasksRequest, error) {
+type AddUsersRequest struct {
+	Users []item.User
+}
+
+func ValidateListTasksRequest(r *http.Request) (*ListTasksRequest, error) {
 	strUserId := r.URL.Query().Get("user_id")
 	if strUserId == "" {
 		return nil, fmt.Errorf("user_id is required")
@@ -42,7 +46,7 @@ func validateListTasksRequest(r *http.Request) (*ListTasksRequest, error) {
 	}, nil
 }
 
-func validateAddTasksRequest(r *http.Request) (*AddTasksRequest, error) {
+func ValidateAddTasksRequest(r *http.Request) (*AddTasksRequest, error) {
 	strUserId := r.URL.Query().Get("user_id")
 	if strUserId == "" {
 		return nil, fmt.Errorf("user_id is required")
@@ -68,7 +72,7 @@ func validateAddTasksRequest(r *http.Request) (*AddTasksRequest, error) {
 	}, nil
 }
 
-func validateUpdateTasksRequest(r *http.Request) (*UpdateTasksRequest, error) {
+func ValidateUpdateTasksRequest(r *http.Request) (*UpdateTasksRequest, error) {
 	strUserId := r.URL.Query().Get("user_id")
 	if strUserId == "" {
 		return nil, fmt.Errorf("user_id is required")
@@ -94,7 +98,7 @@ func validateUpdateTasksRequest(r *http.Request) (*UpdateTasksRequest, error) {
 	}, nil
 }
 
-func validateDeleteTaskRequest(r *http.Request) (*DeleteTaskRequest, error) {
+func ValidateDeleteTaskRequest(r *http.Request) (*DeleteTaskRequest, error) {
 	strTaskId := r.URL.Query().Get("task_id")
 	if strTaskId == "" {
 		return nil, fmt.Errorf("task_id is required")
@@ -107,5 +111,20 @@ func validateDeleteTaskRequest(r *http.Request) (*DeleteTaskRequest, error) {
 
 	return &DeleteTaskRequest{
 		TaskId: taskId,
+	}, nil
+}
+
+func ValidateAddUsersRequest(r *http.Request) (*AddUsersRequest, error) {
+	var users []item.User
+	if err := json.NewDecoder(r.Body).Decode(&users); err != nil {
+		return nil, fmt.Errorf("invalid JSON body: %w", err)
+	}
+
+	if len(users) == 0 {
+		return nil, fmt.Errorf("at least one user is required")
+	}
+
+	return &AddUsersRequest{
+		Users: users,
 	}, nil
 }

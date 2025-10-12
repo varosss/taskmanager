@@ -8,14 +8,14 @@ import (
 )
 
 type TaskService struct {
-	MemoryStore *store.TaskMemoryStore
-	FileStorage *file.TaskFileStorage
+	MemoryStore *store.MemoryStore[item.Task]
+	FileStorage *file.FileStorage[item.Task]
 }
 
 func NewTaskService() *TaskService {
 	return &TaskService{
-		MemoryStore: store.NewTaskMemoryStore(),
-		FileStorage: file.NewTaskFileStorage(),
+		MemoryStore: store.NewMemoryStore[item.Task](),
+		FileStorage: file.NewFileStorage[item.Task](file.FILES_DIR + "tasks.json"),
 	}
 }
 
@@ -26,7 +26,7 @@ func (s *TaskService) LoadFromFile(ctx context.Context) error {
 	}
 
 	taskMap := map[int]item.Task{}
-	nextId := 0
+	nextId := store.INITIAL_ID
 	for _, task := range data {
 		if nextId < task.Id {
 			nextId = task.Id
@@ -46,7 +46,7 @@ func (s *TaskService) SaveToFile(ctx context.Context) error {
 }
 
 func (s *TaskService) AddTasks(ctx context.Context, tasks []item.Task) error {
-	s.MemoryStore.Add(tasks)
+	s.MemoryStore.Add(tasks, func(t *item.Task, id int) { t.Id = id })
 
 	return s.SaveToFile(ctx)
 }
@@ -58,7 +58,9 @@ func (s *TaskService) DeleteTask(ctx context.Context, taskId int) error {
 }
 
 func (s *TaskService) UpdateTasks(ctx context.Context, tasks []item.Task) error {
-	s.MemoryStore.Update(tasks)
+	s.MemoryStore.Update(tasks, func(t item.Task) int {
+		return t.Id
+	})
 
 	return s.SaveToFile(ctx)
 }
