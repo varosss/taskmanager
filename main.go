@@ -15,6 +15,7 @@ import (
 func main() {
 	userHandler := handlers.NewUserHandler()
 	taskHandler := handlers.NewTaskHandler()
+	reportHandler := handlers.NewReportHandler()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
@@ -40,6 +41,7 @@ func main() {
 		}
 	})
 	mux.HandleFunc("/task", taskHandler.DeleteTask)
+	mux.HandleFunc("/generate-report", reportHandler.GenerateReport)
 
 	srv := &http.Server{
 		Addr:    ":8080",
